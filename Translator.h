@@ -7,17 +7,26 @@
 
 
 #include <iostream>
+#include <unicode/utypes.h>
+#include <unicode/uclean.h>
+#include <unicode/unistr.h>
+#include <unicode/normlzr.h>
+#include <unicode/uchar.h>
 #include <curl/curl.h>
+
 #include "Languages.h"
 #include "jsonparser/json.h"
 
 using json = nlohmann::json;
+using namespace icu;
 
 class Translator {
 private:
     Language from_lang, to_lang;
     std::string langCode;
     std::string wiki_url;
+
+    UErrorCode status = U_ZERO_ERROR;;
 
     const std::string MATHS_PAGEID_EN = "18831";
 

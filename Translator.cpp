@@ -3,7 +3,7 @@
 //
 
 #include <string>
-#include <boost/locale.hpp>
+
 #include "Translator.h"
 #include "utils.h"
 
@@ -23,6 +23,7 @@ Translator::Translator() {
 
 Translator::~Translator() {
     curl_easy_cleanup(this->curl);
+    u_cleanup();
 
 }
 
@@ -92,6 +93,7 @@ std::string Translator::get_pageid(const std::string& word) {
 }
 
 void Translator::init() {
+    u_init(&status);
     this->langCode = LanguageCode[from_lang];
     std::stringstream ss;
     ss << "https://" << this->langCode << ".wikipedia.org/w/api.php";
@@ -102,12 +104,12 @@ void Translator::init() {
 
 std::string Translator::find_right_pageid(const json &data) {
 
-    json results_array = data["query"]["search"];
-    int array_size = results_array.size();
-
-    for (int i = 0; i < array_size; i++) {
-
-    }
+//    json results_array = data["query"]["search"];
+//    int array_size = results_array.size();
+//
+//    for (int i = 0; i < array_size; i++) {
+//
+//    }
 
     return to_string(data["query"]["search"][2]["pageid"]);
 }
@@ -137,5 +139,15 @@ void Translator::get_math_word() {
     json data = json::parse(readBuffer.c_str());
 
     this->math_word = data["query"]["pages"][MATHS_PAGEID_EN]["langlinks"][0]["*"];
+
+    UnicodeString math_word_uni;
+    math_word_uni.setTo(math_word.c_str());
+
+    UnicodeString test;
+    test.setTo("toÁN hỌc");
+
+    if (Normalizer::compare(math_word_uni, test, U_COMPARE_IGNORE_CASE, status) == 0) {
+        std::cout << "nice" << std::endl;
+    }
 }
 
