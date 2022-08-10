@@ -3,7 +3,7 @@
 
 int main() {
 
-    Translator t(Vietnamese, English);
-    std::cout << t.translate_wiki("Trường") << std::endl;
+    Translator t(English, Vietnamese);
+    std::cout << t.translate_wiki("Integral") << std::endl;
     return 0;
 }

@@ -36,11 +36,12 @@ private:
 
     std::string get_pageid(const std::string& word);
 
-    std::string find_right_pageid(const json &data);
+    std::string find_right_pageid(const json &data, const std::string &word);
 
     void get_math_word();
 
     std::string math_word;
+    UnicodeString math_word_uni;
 
 public:
     Translator(Language from_lang, Language to_lang);
