@@ -15,7 +15,7 @@
 #include <curl/curl.h>
 
 #include "Languages.h"
-#include "jsonparser/json.h"
+#include "../jsonparser/json.h"
 
 using json = nlohmann::json;
 using namespace icu;
@@ -50,6 +50,8 @@ public:
     ~Translator();
 
     std::string translate_wiki(const std::string& word);
+
+    void set_lang(Language from_lang, Language to_lang);
 
 };
 

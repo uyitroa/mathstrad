@@ -33,3 +33,4 @@
 
 # Folders
 cmake-build-debug
+tests/lib

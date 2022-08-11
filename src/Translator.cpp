@@ -9,6 +9,7 @@
 
 Translator::Translator(Language from_lang, Language to_lang) {
     curl = curl_easy_init();
+    u_init(&status);
     this->from_lang = from_lang;
     this-> to_lang = to_lang;
     this->init();
@@ -17,6 +18,7 @@ Translator::Translator(Language from_lang, Language to_lang) {
 
 Translator::Translator() {
     curl = curl_easy_init();
+    u_init(&status);
     this->from_lang = English;
     this->to_lang = English;
     this->init();
@@ -26,6 +28,21 @@ Translator::~Translator() {
     curl_easy_cleanup(this->curl);
     u_cleanup();
 
+}
+
+void Translator::init() {
+    this->langCode = LanguageCode[from_lang];
+    std::stringstream ss;
+    ss << "https://" << this->langCode << ".wikipedia.org/w/api.php";
+    this->wiki_url.assign(ss.str());
+
+    this->get_math_word();
+}
+
+void Translator::set_lang(Language from_lang, Language to_lang) {
+    this->from_lang = from_lang;
+    this->to_lang = to_lang;
+    this->init();
 }
 
 static size_t writeCallback(void *contents, size_t size, size_t nmemb, void *userp) {
@@ -64,7 +81,9 @@ std::string Translator::translate_wiki(const std::string& word) {
 
     json data = json::parse(readBuffer);
 
-    return data["query"]["pages"][pageid]["langlinks"][0]["*"];
+    std::string translated_title = data["query"]["pages"][pageid]["langlinks"][0]["*"];
+    std::string translated_word = clean_paranthesis(translated_title);
+    return translated_word;
 }
 
 /*
@@ -109,16 +128,6 @@ std::string Translator::get_pageid(const std::string& word) {
     return pageid;
 }
 
-void Translator::init() {
-    u_init(&status);
-    this->langCode = LanguageCode[from_lang];
-    std::stringstream ss;
-    ss << "https://" << this->langCode << ".wikipedia.org/w/api.php";
-    this->wiki_url.assign(ss.str());
-
-    this->get_math_word();
-}
-
 std::string Translator::find_right_pageid(const json &data, const std::string &word) {
 
     json results_array = data["query"]["search"];
@@ -132,21 +141,12 @@ std::string Translator::find_right_pageid(const json &data, const std::string &w
         std::string wiki_title = to_string(data["query"]["search"][i]["title"]);
 
         // Check if math_word is in wiki_title using icu compare, for case-insensitive and equivalent stuffs
-        for (int j = 0; j < wiki_title.length() - word.length(); j++) {
-
-            UnicodeString part_wiki_title_uni;
-            part_wiki_title_uni.setTo(wiki_title.substr(j, word.length()).c_str());
-
-            /*
-             * To improve
-             */
-            if (Normalizer::compare(part_wiki_title_uni, word_uni, U_COMPARE_IGNORE_CASE, status) == 0) {
-                return to_string(data["query"]["search"][i]["pageid"]);
-            }
+        if (is_substring(word_uni, wiki_title, word.length(), status)) {
+            return to_string(data["query"]["search"][i]["pageid"]);
         }
     }
 
-    return to_string(data["query"]["search"][1]["pageid"]);
+    return to_string(data["query"]["search"][0]["pageid"]);
 }
 
 void Translator::get_math_word() {

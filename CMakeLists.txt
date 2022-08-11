@@ -3,12 +3,19 @@ project(mathstrad)
 
 set(CMAKE_CXX_STANDARD 14)
 
+set(SOURCE_FILES main.cpp)
+
 find_package(CURL REQUIRED)
 
 include_directories(/usr/local/Cellar/icu4c/70.1/include)
 link_directories(/usr/local/Cellar/icu4c/70.1/lib)
 
-add_executable(mathstrad main.cpp Translator.cpp Translator.h Languages.h utils.cpp utils.h jsonparser/json.h)
+add_executable(mathstrad ${SOURCE_FILES})
+
+include_directories(src)
+
+add_subdirectory(src)
+add_subdirectory(tests)
 
 if(CURL_FOUND)
     include_directories(${CURL_INCLUDE_DIR})
@@ -18,3 +25,5 @@ else(CURL_FOUND)
 endif(CURL_FOUND)
 
 target_link_libraries(mathstrad icuuc)
+
+target_link_libraries(mathstrad src)
