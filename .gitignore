@@ -34,3 +34,7 @@
 # Folders
 cmake-build-debug
 tests/lib
+.idea/
+
+# Files
+.DS_Store
