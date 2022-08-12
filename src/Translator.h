@@ -15,7 +15,7 @@
 #include <curl/curl.h>
 
 #include "Languages.h"
-#include "../jsonparser/json.h"
+#include "jsonparser/json.h"
 
 using json = nlohmann::json;
 using namespace icu;

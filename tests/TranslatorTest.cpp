@@ -62,3 +62,10 @@ TEST_F(TranslatorFixture, VietnameseToFrench) {
     ASSERT_EQ("Corps commutatif", t->translate_wiki("Trường"));
     ASSERT_EQ("Fonction", t->translate_wiki("Hàm số"));
 }
+
+
+TEST_F(TranslatorFixture, EnglishToJapaense) {
+    t->set_lang(English, Japanese);
+
+    ASSERT_EQ("列", t->translate_wiki("Sequence"));
+}

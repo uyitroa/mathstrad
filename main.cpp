@@ -3,7 +3,7 @@
 
 int main() {
 
-    Translator t(English, French);
-    std::cout << t.translate_wiki("Field") << std::endl;
+    Translator t(French, English);
+    std::cout << t.translate_wiki("corps commutatif") << std::endl;
     return 0;
 }

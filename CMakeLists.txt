@@ -7,14 +7,18 @@ set(SOURCE_FILES main.cpp)
 
 find_package(CURL REQUIRED)
 
+# path to icu4c
 include_directories(/usr/local/Cellar/icu4c/70.1/include)
 link_directories(/usr/local/Cellar/icu4c/70.1/lib)
+
 
 add_executable(mathstrad ${SOURCE_FILES})
 
 include_directories(src)
 
 add_subdirectory(src)
+
+#enable_testing()
 add_subdirectory(tests)
 
 if(CURL_FOUND)
