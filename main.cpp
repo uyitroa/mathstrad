@@ -3,7 +3,7 @@
 
 int main() {
 
-    Translator t(French, English);
-    std::cout << t.translate_wiki("corps commutatif") << std::endl;
+    Translator t(Vietnamese, English);
+    std::cout << t.translate("dãy số") << std::endl;
     return 0;
 }
