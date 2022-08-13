@@ -49,7 +49,7 @@ public:
 
     ~Translator();
 
-    std::string translate_wiki(const std::string& word);
+    std::string translate_wiki(const std::string& word, bool suggest);
 
     std::string translate(const std::string &word);
 

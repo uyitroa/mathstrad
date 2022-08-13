@@ -71,8 +71,9 @@ void Translator::get_math_word() {
 /*
  * Get the right page wiki for the word in the original language, then get the same page wiki in the desired language.
  * Extract the title of that wiki page and return it.
+ * bool suggest is to try to translate another word in case the original word can't be translated
  */
-std::string Translator::translate_wiki(const std::string& word) {
+std::string Translator::translate_wiki(const std::string& word, bool suggest) {
     if (!curl) {return "";}
 
     std::string backup_pageid; // in case pageid can't be translated
@@ -97,6 +98,7 @@ std::string Translator::translate_wiki(const std::string& word) {
         translated_title = data["query"]["pages"][pageid]["langlinks"][0]["*"];
     } catch (const nlohmann::detail::type_error &exc) {
         std::cerr << exc.what() << " in translated_title = data in translate_wiki()" << std::endl;
+        if (!suggest) {return "";}
 
         p["pageids"] = backup_pageid;
         url.assign(addParameters(this->wiki_url, p));
@@ -206,7 +208,7 @@ std::string Translator::find_right_pageid(const json &data, const std::string &w
 }
 
 std::string Translator::translate(const std::string &word) {
-    std::string wiki_res = this->translate_wiki(word);
+    std::string wiki_res = this->translate_wiki(word, true);
     if (!wiki_res.empty()) {return wiki_res;}
 
     /*
