@@ -51,8 +51,13 @@ public:
 
     std::string translate_wiki(const std::string& word);
 
+    std::string translate(const std::string &word);
+
     void set_lang(Language from_lang, Language to_lang);
 
+    std::string find_right_pageid(const json &data, const std::string &word, std::string &backup);
+
+    std::string get_pageid(const std::string &word, std::string &suggestion);
 };
 
 

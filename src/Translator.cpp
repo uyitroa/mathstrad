@@ -7,6 +7,7 @@
 #include "Translator.h"
 #include "utils.h"
 
+
 Translator::Translator(Language from_lang, Language to_lang) {
     curl = curl_easy_init();
     u_init(&status);
@@ -45,11 +46,27 @@ void Translator::set_lang(Language from_lang, Language to_lang) {
     this->init();
 }
 
-static size_t writeCallback(void *contents, size_t size, size_t nmemb, void *userp) {
-    ((std::string*)userp)->append((char*)contents, size * nmemb);
-    return size * nmemb;
-}
+void Translator::get_math_word() {
 
+    if (this->from_lang == English) {
+        this->math_word.assign("Mathematics");
+        this->math_word_uni.setTo(this->math_word.c_str());
+        return;}
+
+    Params p {{"action", "query"},
+              {"format", "json"},
+              {"prop", "langlinks"},
+              {"pageids", MATHS_PAGEID_EN},
+              {"lllang", LanguageCode[this->from_lang]},
+              {"lllimit", "100"}};
+
+    std::string url = addParameters("https://en.wikipedia.org/w/api.php", p);
+
+    json data = send_get_request(curl, url);
+
+    this->math_word = data["query"]["pages"][MATHS_PAGEID_EN]["langlinks"][0]["*"];
+    this->math_word_uni.setTo(this->math_word.c_str());
+}
 
 /*
  * Get the right page wiki for the word in the original language, then get the same page wiki in the desired language.
@@ -58,10 +75,10 @@ static size_t writeCallback(void *contents, size_t size, size_t nmemb, void *use
 std::string Translator::translate_wiki(const std::string& word) {
     if (!curl) {return "";}
 
-    std::string pageid = this->get_pageid(word);
+    std::string backup_pageid; // in case pageid can't be translated
+    std::string pageid = this->get_pageid(word, backup_pageid);
 
     // Get wikipage in the desired language with the pageid of the original language.
-    std::string readBuffer;
 
     Params p {{"action", "query"},
              {"format", "json"},
@@ -73,27 +90,36 @@ std::string Translator::translate_wiki(const std::string& word) {
 
     std::string url = addParameters(this->wiki_url, p);
 
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+    json data = send_get_request(curl, url);
 
-    curl_easy_perform(curl);
+    std::string translated_title;
+    try {
+        translated_title = data["query"]["pages"][pageid]["langlinks"][0]["*"];
+    } catch (const nlohmann::detail::type_error &exc) {
+        std::cerr << exc.what() << " in translated_title = data in translate_wiki()" << std::endl;
 
-    json data = json::parse(readBuffer);
+        p["pageids"] = backup_pageid;
+        url.assign(addParameters(this->wiki_url, p));
+        json data1 = send_get_request(curl, url);
 
-    std::string translated_title = data["query"]["pages"][pageid]["langlinks"][0]["*"];
+        try {
+            translated_title = data1["query"]["pages"][backup_pageid]["langlinks"][0]["*"];
+        } catch (const nlohmann::detail::type_error &exc) {
+            std::cerr << exc.what() << " in translated_title = data1 in translate_wiki()" <<std::endl;
+            translated_title = "";
+        }
+    }
     std::string translated_word = clean_paranthesis(translated_title);
     return translated_word;
 }
 
 /*
  * Get the right page wiki for the word in the original language.
+ * std::string &suggestion is to suggest other word in case the searched word can't be translated.
  * Return pageid.
 */
-std::string Translator::get_pageid(const std::string& word) {
+std::string Translator::get_pageid(const std::string& word, std::string &suggestion) {
     if (!curl) {return "";}
-
-    std::string readBuffer;
 
     // search for the word + " maths"
     std::string param_word(word);
@@ -112,23 +138,29 @@ std::string Translator::get_pageid(const std::string& word) {
 
     std::string url = addParameters(this->wiki_url, p);
 
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
-    curl_easy_perform(curl);
-
-    json data = json::parse(readBuffer.c_str());
+    json data = send_get_request(curl, url);
 
     /*
      * Algorithm to find the right page if word is ambigous
      */
-    std::string pageid = this->find_right_pageid(data, word);
+    // TODO: improve this shit
+    std::string pageid = this->find_right_pageid(data, word, suggestion);
 
     return pageid;
 }
 
-std::string Translator::find_right_pageid(const json &data, const std::string &word) {
+/*
+ * without std::string &suggestion
+ */
+std::string Translator::get_pageid(const std::string &word) {
+    std::string _;
+    return get_pageid(word, _);
+}
+
+/*
+ * std::string &suggestion is to suggest other word in case the searched word can't be translated.
+ */
+std::string Translator::find_right_pageid(const json &data, const std::string &word, std::string &suggestion) {
 
     json results_array = data["query"]["search"];
     int array_size = results_array.size();
@@ -141,40 +173,46 @@ std::string Translator::find_right_pageid(const json &data, const std::string &w
         std::string wiki_title = to_string(data["query"]["search"][i]["title"]);
 
         // Check if math_word is in wiki_title using icu compare, for case-insensitive and equivalent stuffs
+        // TODO: improve algorithm of finding the right word
         if (is_substring(word_uni, wiki_title, word.length(), status)) {
+
+            try {
+                if (i == 0) {suggestion.assign(to_string(data["query"]["search"][1]["pageid"]));}
+                else {suggestion.assign(to_string(data["query"]["search"][0]["pageid"]));}
+
+            } catch (const nlohmann::detail::type_error &exc) {
+                suggestion.assign("");
+            }
+
             return to_string(data["query"]["search"][i]["pageid"]);
         }
+    }
+
+    try {
+        suggestion.assign(to_string(data["query"]["search"][1]["pageid"]));
+    } catch (const nlohmann::detail::type_error &exc) {
+        suggestion.assign("");
     }
 
     return to_string(data["query"]["search"][0]["pageid"]);
 }
 
-void Translator::get_math_word() {
+/*
+ * without std:;string &suggestion
+ */
+std::string Translator::find_right_pageid(const json &data, const std::string &word) {
+    std::string _;
+    return this->find_right_pageid(data, word, _);
+}
 
-    if (this->from_lang == English) {
-        this->math_word.assign("Mathematics");
-        this->math_word_uni.setTo(this->math_word.c_str());
-        return;}
+std::string Translator::translate(const std::string &word) {
+    std::string wiki_res = this->translate_wiki(word);
+    if (!wiki_res.empty()) {return wiki_res;}
 
-    Params p {{"action", "query"},
-              {"format", "json"},
-              {"prop", "langlinks"},
-              {"pageids", MATHS_PAGEID_EN},
-              {"lllang", LanguageCode[this->from_lang]},
-              {"lllimit", "100"}};
+    /*
+     * TODO: add other translation algorithm if wiki doesn't work
+     */
 
-    std::string readBuffer;
-    std::string url = addParameters("https://en.wikipedia.org/w/api.php", p);
-
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
-    curl_easy_perform(curl);
-
-    json data = json::parse(readBuffer.c_str());
-
-    this->math_word = data["query"]["pages"][MATHS_PAGEID_EN]["langlinks"][0]["*"];
-    this->math_word_uni.setTo(this->math_word.c_str());
+    return "";
 }
 

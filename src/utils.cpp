@@ -23,9 +23,6 @@ bool is_substring(const UnicodeString &substring_uni, const std::string &whole_s
         UnicodeString part_wholestring_uni;
         part_wholestring_uni.setTo(whole_string.substr(j, substring_length).c_str());
 
-        /*
-         * To improve
-         */
         if (Normalizer::compare(part_wholestring_uni, substring_uni, U_COMPARE_IGNORE_CASE, status) == 0) {
             return true;
         }
@@ -48,3 +45,14 @@ std::string clean_paranthesis(const std::string &word) {
     return new_word;
 }
 
+json send_get_request(CURL *curl, const std::string &url) {
+    std::string read_buffer;
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &read_buffer);
+
+    curl_easy_perform(curl);
+
+    return json::parse(read_buffer);
+}
